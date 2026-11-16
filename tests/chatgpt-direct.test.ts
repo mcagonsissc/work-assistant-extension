@@ -94,6 +94,10 @@ it('lists models and returns only completed, credential-redacted answers', async
   expect(body).toMatchObject({ model: 'gpt-test', store: false, stream: true, instructions: 'Rules', input: [{ role: 'user', content: 'Hi' }] });
   inference = () => sse([{ type: 'response.failed', response: { error: { code: 'subscription_sharing_usage_limit_exceeded' } } }]);
   await expect(directRequest({ op: 'complete', accountId, model: 'gpt-test', messages: [] })).rejects.toMatchObject({ code: 'rate_limit' });
+  inference = () => sse([{ type: 'response.failed', response: { error: { code: 'some_new_code', message: 'You have reached your plan session limit.' } } }]);
+  await expect(directRequest({ op: 'complete', accountId, model: 'gpt-test', messages: [] })).rejects.toMatchObject({ code: 'rate_limit', message: expect.stringContaining('usage limit') });
+  inference = () => sse([{ type: 'response.failed', response: { error: { code: 'server_error', message: 'Something broke' } } }]);
+  await expect(directRequest({ op: 'complete', accountId, model: 'gpt-test', messages: [] })).rejects.toMatchObject({ code: 'unavailable', message: expect.stringContaining('Something broke') });
   inference = () => sse([{ type: 'response.output_text.delta', delta: 'cut off' }]);
   await expect(directRequest({ op: 'complete', accountId, model: 'gpt-test', messages: [] })).rejects.toMatchObject({ code: 'invalid_response' });
   await expect(readCompletedStream(null)).rejects.toMatchObject({ code: 'invalid_response' });

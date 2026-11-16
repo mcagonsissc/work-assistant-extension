@@ -35,7 +35,7 @@ it('shares bounded relevant context while omitting credentials, descriptions, me
  await saveTask({title:'Review API',description:`PRIVATE DESCRIPTION ${AI_KEY}`,status:'todo',priority:'high',estimatedMinutes:30,scheduledDate:AI_DATE},undefined,db);
  await db.events.add({id:'meeting',title:'PRIVATE MEETING',source:'manual',start:`${AI_DATE}T10:00:00Z`,end:`${AI_DATE}T11:00:00Z`,timeZone:'UTC',busy:true});
  const p=provider(answer());await sendChat(options,p,db);const request=JSON.stringify(vi.mocked(p.complete).mock.calls[0][0].messages);
- expect(request).not.toContain(AI_KEY);expect(request).not.toContain('PRIVATE DESCRIPTION');expect(request).not.toContain('PRIVATE MEETING');expect(request).not.toContain('notificationsEnabled');expect(request).toContain('Review API');expect(request).toContain('busyTimes');
+ expect(request).not.toContain(AI_KEY);expect(request).not.toContain('PRIVATE DESCRIPTION');expect(request).not.toContain('PRIVATE MEETING');expect(request).not.toContain('notificationsEnabled');expect(request).toContain('Review API');expect(request).toContain('\\"meetings\\":[{');
  const context=buildAIContext(await snapshot(db),{...options,includeDescriptions:true},AI_NOW);expect(context.tasks[0].description).toContain('PRIVATE DESCRIPTION');expect(JSON.stringify(providerMessages(context,options.text,[],AI_KEY))).not.toContain(AI_KEY);
 });
 it('redacts credentials echoed by even a replacement provider adapter',async()=>{

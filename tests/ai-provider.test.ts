@@ -55,8 +55,9 @@ describe('OpenRouter models and bounded provider responses',()=>{
  it('rejects oversized responses before parsing',async()=>{
   const fetcher=vi.fn(async()=>new Response('x'.repeat(300000)));await expect(new OpenRouterProvider(fetcher).complete(options)).rejects.toMatchObject({code:'invalid_response'});expect(fetcher).toHaveBeenCalledTimes(1);
  });
- it('rejects unknown fields/actions and redacts echoed credentials in all fields',()=>{
-  expect(()=>parseAssistantResponse(JSON.stringify({...answer(),sql:'DELETE FROM tasks'}))).toThrow();
+ it('discards unknown fields, rejects unknown actions and redacts echoed credentials in all fields',()=>{
+  expect(parseAssistantResponse(JSON.stringify({...answer(),sql:'DELETE FROM tasks'}))).toEqual(answer()); // Unknown fields are discarded, never acted on.
+  expect(JSON.stringify(parseAssistantResponse(JSON.stringify({reply:'ok',actions:[{type:'complete_task',taskId:'t1',sql:'DROP'}]})))).not.toContain('DROP');
   expect(()=>parseAssistantResponse(JSON.stringify({reply:'ok',actions:[{type:'delete_database'}]}))).toThrow();
   const response=parseAssistantResponse(JSON.stringify(answer(createAction({title:AI_KEY}))),[AI_KEY]);expect(JSON.stringify(response)).not.toContain(AI_KEY);
   expect(redactSecrets(`key ${AI_KEY}`)).toBe('key [redacted key]');

@@ -113,3 +113,9 @@ See [architecture](docs/ARCHITECTURE.md), [requirements](docs/REQUIREMENTS.md), 
 Select **ChatGPT plan** in AI settings and choose **Continue with ChatGPT**. Sign in on the tab that opens, then pick a model and save sharing consent. Nothing else needs installing. The session is stored in this extension's private browser storage; **Sign out** revokes and removes it. See [how it works and where the session is stored](docs/CHATGPT_SIGNIN.md). Live eligibility depends on your ChatGPT account and OpenAI preview access. There is no automatic API billing fallback.
 
 AI Chat keeps its message box visible at the bottom while conversation history scrolls above it. Press Enter to send or Shift+Enter for a new line. Planning date, context scope and description sharing are available under Chat options.
+
+## Languages
+
+The interface is available in English, French, Spanish, German and Portuguese. Choose one under **Settings → Language**; by default it follows the browser language. The assistant replies in the same language.
+
+To add a language: copy `src/i18n/fr.json` to `src/i18n/<code>.json` and translate the values (keys are the English text and must not change), register it in `src/i18n/index.ts`, and add `public/_locales/<code>/messages.json` for the store description. Run `npm test`; `tests/i18n.test.ts` fails if a string is missing or a `{placeholder}` was altered.

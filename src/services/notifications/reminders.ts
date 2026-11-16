@@ -49,6 +49,8 @@ export interface ReminderPlatform {
   listAlarms(): Promise<string[]>; setAlarm(name: string, when: number): Promise<void>; clearAlarm(name: string): Promise<void>;
   /** `sticky` keeps the notification on screen until the user dismisses it. */
   notify(id: string, title: string, message: string, sticky?: boolean): Promise<void>;
+  /** Optional: show the reminder as a browser window. */
+  popup?(title: string, message: string): Promise<void>;
 }
 export async function syncReminders(platform: ReminderPlatform, database: WorkdayDB = db, now = Date.now()) {
   const state = await database.transaction('r', database.tables, async (): Promise<ReminderState> => ({ settings: await getSettings(database), tasks: await database.tasks.toArray(), blocks: await database.blocks.toArray(), plans: await database.plans.toArray(), sessions: await database.sessions.toArray(), events: await database.events.toArray() }));
@@ -76,8 +78,12 @@ export async function syncReminders(platform: ReminderPlatform, database: Workda
       await database.reminders.update(r.id, { deliveredAt: iso(now) }); return true;
     });
     if (claimed && state.settings.notificationsEnabled && !isQuiet(now, state.settings)) {
-      try { await platform.notify(`wd:${r.id}`, r.title, `${r.message}${r.kind === 'checkin' ? ' — open Workday for Completed, Need more time, Pause or Skip.' : ''}`, r.kind === 'checkin'); }
-      catch { await database.reminders.update(r.id, { deliveryError: 'Browser notification delivery failed. Check browser and OS notification permissions.' }); }
+      const message = `${r.message}${r.kind === 'checkin' ? ' — open Workday for Completed, Need more time, Pause or Skip.' : ''}`;
+      try {
+        if (state.settings.popupReminders !== false && platform.popup) await platform.popup(r.title, message);
+        else await platform.notify(`wd:${r.id}`, r.title, message, r.kind === 'checkin');
+      }
+      catch { await database.reminders.update(r.id, { deliveryError: 'Reminder delivery failed. Check browser and OS notification permissions.' }); }
     }
   }
 }

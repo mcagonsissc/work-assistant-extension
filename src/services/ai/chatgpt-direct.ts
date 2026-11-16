@@ -261,7 +261,8 @@ export async function readCompletedStream(body: ReadableStream<Uint8Array> | nul
         try { parsed = JSON.parse(data); } catch { throw new AIError('invalid_response', 'ChatGPT returned an invalid stream.'); }
         if (parsed.type === 'response.failed' || parsed.type === 'response.incomplete' || parsed.type === 'error') {
           const reason = streamFailure(parsed);
-          if (/usage_(limit_exceeded|unavailable)/.test(reason)) throw new AIError('rate_limit', 'ChatGPT usage limit reached. Manage usage in ChatGPT, then retry here.');
+          // OpenAI words plan limits several ways (usage, session, weekly, rate, quota).
+          if (/usage_(limit_exceeded|unavailable)|(usage|session|weekly|plan|rate)[ _-]?limit|limit[ _-]?(reached|exceeded)|quota/i.test(reason)) throw new AIError('rate_limit', `You’ve reached your ChatGPT plan’s usage limit. Wait for it to reset, or choose another AI provider in Settings.${reason ? ` (${reason})` : ''}`);
           throw new AIError('unavailable', `ChatGPT did not finish its response${reason ? ` (${reason})` : ''}. No task changes were applied.`);
         }
         if (parsed.type === 'response.completed') {

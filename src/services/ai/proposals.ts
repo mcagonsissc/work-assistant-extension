@@ -11,7 +11,7 @@ function taskSummary(task: Task): Record<string,unknown> { return { title:task.t
 export function projectActions(base: WorkdaySnapshot, response: AssistantResponse, date: string, allowedTaskIds: string[], ids: [string,string][], now: number) {
   const state = structuredClone(base), createdIds = new Map(ids), allowed = new Set(allowedTaskIds);
   const dates = new Set<string>(), changes: Change[] = [];
-  const before = new Map(base.tasks.map(t=>[t.id,t])); const mutated = new Set<string>();
+  const before = new Map(base.tasks.map(t=>[t.id,t])); const mutated = new Set<string>(), touchedMeetings = new Set<string>();
   const resolve = (reference:string) => { const id=createdIds.get(reference) ?? reference; if (!allowed.has(id) && !ids.some(([client,value])=>!client.startsWith('meeting:') && value===id)) invalid('The model referenced a task outside the shared context.'); return id; };
   function closeTask(task:Task) {
     for (const session of state.sessions.filter(s=>s.taskId===task.id && !s.endedAt)) { const end=Math.max(now,Date.parse(session.startedAt)); session.endedAt=iso(end); task.actualSeconds+=(end-Date.parse(session.startedAt))/1000; }
@@ -37,6 +37,27 @@ export function projectActions(base: WorkdaySnapshot, response: AssistantRespons
       let day=workDate(Date.parse(start),state.settings);const last=workDate(Date.parse(end)-1,state.settings);
       for(let i=0;day<=last&&i<8;i++,day=addDays(day,1))dates.add(day);
       dates.add(date);continue;
+    }
+    if (action.type==='update_meeting' || action.type==='delete_meeting') {
+      const event=state.events.find(e=>e.id===action.meetingId); if (!event) invalid('The model referenced a meeting that does not exist.');
+      if (touchedMeetings.has(event.id)) invalid('The model proposed conflicting actions for the same meeting.'); touchedMeetings.add(event.id);
+      const old={title:event.title,start:event.start,end:event.end,timeZone:event.timeZone};
+      const affect=(from:string,to:string)=>{let day=workDate(Date.parse(from),state.settings);const last=workDate(Date.parse(to)-1,state.settings);for(let i=0;day<=last&&i<8;i++,day=addDays(day,1))dates.add(day);};
+      affect(event.start,event.end); dates.add(date);
+      // Free the time this meeting held; affected days are rescheduled below.
+      state.existing=state.existing.filter(b=>b.calendarEventId!==event.id);
+      if (action.type==='delete_meeting') { state.events=state.events.filter(e=>e.id!==event.id); changes.push({kind:'meeting',id:event.id,title:event.title,before:old,after:{},removed:true}); continue; }
+      if (action.title===null && action.startLocal===null && action.endLocal===null) invalid('The model proposed an empty meeting update.');
+      let start=event.start,end=event.end;
+      try {
+        if (action.startLocal!==null) start=parseLocalInput(action.startLocal,state.settings.timeZone);
+        // Moving only the start keeps the meeting's length.
+        end=action.endLocal!==null ? parseLocalInput(action.endLocal,state.settings.timeZone) : action.startLocal!==null ? iso(Date.parse(start)+Date.parse(event.end)-Date.parse(event.start)) : event.end;
+      } catch { invalid('Meeting times are invalid or ambiguous in your workday timezone.'); }
+      if (Date.parse(end)<=Date.parse(start) || Date.parse(end)-Date.parse(start)>7*86400_000) invalid('Meeting end must be after its start and within seven days.');
+      Object.assign(event,{title:action.title ?? event.title,start,end});
+      changes.push({kind:'meeting',id:event.id,title:event.title,before:old,after:{title:event.title,start,end,timeZone:event.timeZone}});
+      affect(start,end); continue;
     }
     const id=resolve(action.taskId), task=state.tasks.find(t=>t.id===id); if (!task) invalid('The referenced task no longer exists.');
     // A note never conflicts with other changes to the same task and never moves the schedule.
@@ -95,6 +116,8 @@ export async function approveAIProposal(id:string,database:WorkdayDB=db,now=Date
     const base=await snapshot(database); if(JSON.stringify(base)!==proposal.signature)throw new AIError('stale','Your tasks, meetings, focus or work settings changed. Refresh the preview before approval.');
     const {state,plans}=projectActions(base,assistantResponseSchema.parse(proposal.response),proposal.date,proposal.allowedTaskIds,proposal.ids,now);
     await database.tasks.bulkPut(state.tasks);await database.sessions.bulkPut(state.sessions);await database.events.bulkPut(state.events);
+    // Meetings removed by the proposal. The snapshot check above guarantees nothing else changed.
+    const kept=new Set(state.events.map(e=>e.id));await database.events.bulkDelete((await database.events.toArray()).filter(e=>!kept.has(e.id)).map(e=>e.id));
     await database.blocks.clear();await database.blocks.bulkPut(state.existing);
     const signature=planFingerprint(state);
     for(const plan of plans)await database.plans.put({date:plan.date,timeZone:plan.timeZone,start:plan.start,end:plan.end,overflow:plan.overflow,warnings:plan.warnings,approvedAt:iso(now),signature});
