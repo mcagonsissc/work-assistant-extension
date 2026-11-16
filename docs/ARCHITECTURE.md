@@ -53,3 +53,7 @@ API references: [OpenRouter model discovery](https://openrouter.ai/docs/api/api-
 ## Deferred calendar boundary
 
 Microsoft/Outlook integration is deferred at the user’s request. Manual meetings remain functional; no Graph authentication or event synchronization is implemented. Provider details and API references are in PROVIDERS.md. Live authenticated provider output quality and Edge/OS notification display require user-configured smoke tests; mocked completions do not establish live provider availability.
+
+## ChatGPT plan sign-in
+
+`src/services/ai/chatgpt-direct.ts` runs OpenAI's Sign in with ChatGPT flow inside the extension: dynamic registration, PKCE/state/nonce, JOSE ID-token verification, refresh rotation under a shared web lock, and streaming Responses requests. The redirect goes to an unused `127.0.0.1` port; the background worker reads the code from the tab URL and completes the exchange. Tokens live in `chrome.storage.local` and pending sign-in state in `chrome.storage.session`; neither reaches IndexedDB, exports or chat context. The provider adapter receives only public account/model metadata and credential-redacted completed text, and the existing strict action validation and transactional approval boundary remain authoritative. ChatGPT conversations are scoped to the local account ID. The earlier native helper and WSL companion were removed in 0.6. See CHATGPT_SIGNIN.md.

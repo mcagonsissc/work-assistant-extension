@@ -11,5 +11,5 @@ export const settingsSchema = z.object({
 }).refine(s => s.start !== s.end, { message: 'Start and end must differ. An earlier end means an overnight workday.', path: ['end'] });
 export type WorkdaySettings = z.infer<typeof settingsSchema>;
 export function defaultSettings(): WorkdaySettings {
-  return { id: 'workday', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', start: '09:00', end: '17:00', workingDays: [1,2,3,4,5], lunchEnabled: true, lunchStart: '12:30', lunchMinutes: 30, breaks: [], notificationsEnabled: false, taskReminders: true, meetingReminders: true, breakReminders: true, workdayReminders: true, reminderLeadMinutes: 5, checkInMinutes: 30, quietEnabled: false, quietStart: '18:00', quietEnd: '08:00' };
+  return { id: 'workday', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', start: '09:00', end: '17:00', workingDays: [1,2,3,4,5], lunchEnabled: true, lunchStart: '12:30', lunchMinutes: 30, breaks: [], notificationsEnabled: true, taskReminders: true, meetingReminders: true, breakReminders: true, workdayReminders: true, reminderLeadMinutes: 5, checkInMinutes: 30, quietEnabled: false, quietStart: '18:00', quietEnd: '08:00' };
 }

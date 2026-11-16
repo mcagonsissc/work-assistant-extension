@@ -17,6 +17,7 @@ export const actionSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('defer_task'), taskId: reference, scheduledDate: nullableDate }),
   z.strictObject({ type: z.literal('extend_task'), taskId: reference, minutes: z.number().int().min(1).max(480) }),
   z.strictObject({ type: z.literal('create_meeting'), title: z.string().trim().min(1).max(200), startLocal: localDateTime, endLocal: localDateTime }),
+  z.strictObject({ type: z.literal('add_note'), taskId: reference, note: z.string().trim().min(1).max(1000) }),
   z.strictObject({ type: z.literal('reschedule'), date: z.iso.date() }),
 ]);
 export const assistantResponseSchema = z.strictObject({ reply: z.string().trim().min(1).max(4000), actions: z.array(actionSchema).max(24) });

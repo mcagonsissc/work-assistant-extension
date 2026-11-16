@@ -21,7 +21,7 @@ Open the Vite URL for a browser preview. Preview data is separate from the insta
 1. Run `npm run build`.
 2. Visit `edge://extensions` and enable Developer mode.
 3. **Load unpacked** and choose this project's `dist` folder, or **Reload** the existing installation after rebuilding.
-4. Accept the `alarms`, `notifications` and provider host permissions if Edge prompts. Version 0.4 adds `https://api.openai.com/*` and `https://generativelanguage.googleapis.com/*` alongside OpenRouter for direct-provider requests. Re-enable the extension if needed.
+4. Accept the `alarms`, `notifications`, `storage` and host permissions if Edge prompts. Version 0.6 adds `https://auth.openai.com/*` and `http://127.0.0.1/*` for built-in ChatGPT sign-in and no longer uses `nativeMessaging`. Re-enable the extension if needed.
 5. Click its pinned toolbar icon to open the native side panel.
 
 Keep the same unpacked directory when updating to retain existing data. IndexedDB v1/v2 work data migrates automatically to v4 without removing tasks, settings or sessions. Export a backup before updating. Uninstalling or clearing browser storage can remove data.
@@ -73,7 +73,7 @@ Settings exports versioned JSON containing tasks, blocks, sessions, events, work
 
 Keys, models, consent, cached catalogs and conversations are separate per provider. Switching clears unsaved fields/cancels in-flight requests but preserves saved settings and work. The chat only displays/forwards the selected provider’s conversation. **Forget key** and **Clear chat** affect only the selected provider. OpenRouter has the catalog-based free filter; the direct catalogs do not establish pricing or free-tier eligibility. No provider is selected as a fallback automatically.
 
-OpenAI uses an API key and the Responses API. ChatGPT account sign-in is not implemented. Gemini uses the native generateContent API with its key in a header, never a URL. Both use the existing deterministic scheduling/approval boundary. See [provider architecture and live checks](docs/PROVIDERS.md).
+OpenAI uses an API key and the Responses API. ChatGPT plan sign-in is built into the extension (see docs/CHATGPT_SIGNIN.md). Gemini uses the native generateContent API with its key in a header, never a URL. Both use the existing deterministic scheduling/approval boundary. See [provider architecture and live checks](docs/PROVIDERS.md).
 
 ### OpenRouter setup details
 
@@ -90,7 +90,7 @@ The action allowlist supports creation, selected field updates, completion, defe
 
 ### AI privacy, storage and failures
 
-Each user-supplied key is stored in its own provider-specific extension-local IndexedDB record. **Local extension storage is not a secure server-side secret vault.** There is no shared provider key, content script or backend. In production, requests run in the extension side panel and can connect only to the three configured provider hosts (plus the extension itself). A future public product with managed billing should use a backend proxy. Development preview has a separate localhost origin and separate data; configure real keys only in a development environment you trust.
+Each user-supplied key is stored in its own provider-specific extension-local IndexedDB record. **Local extension storage is not a secure server-side secret vault.** There is no shared provider key, content script or remote backend. ChatGPT account sign-in runs inside the extension and keeps its session in extension-private `chrome.storage.local`. In production, requests run in the extension and can connect only to the configured provider hosts and `auth.openai.com` (plus the extension itself). A future public product with managed billing should use a backend proxy. Development preview has a separate localhost origin and separate data; configure real keys only in a development environment you trust.
 
 Each Send shares your request, current time/timezone, relevant work constraints, up to 80 task summaries plus prerequisites (120 total), up to 80 busy time windows/160 relevant blocks, and six recent completed conversation messages from the selected provider only. Day scope includes the selected day, next calendar day, unscheduled tasks and active focus tasks; All dates broadens the task selection. Descriptions are excluded unless explicitly enabled (500 characters each). Meeting titles, webpages, notification settings, credentials and raw focus history are excluded. Context reports omissions; select a broader scope or identify tasks clearly if needed.
 
@@ -107,3 +107,9 @@ Public catalog discovery has been verified against OpenRouter without a key. Aut
 Microsoft/Outlook integration is deferred at the user’s request. Manual meetings remain available. The next development milestone is daily-use stabilization, accessibility and performance work. No Outlook connection is simulated.
 
 See [architecture](docs/ARCHITECTURE.md), [requirements](docs/REQUIREMENTS.md), [implementation plan](docs/IMPLEMENTATION_PLAN.md) and [progress](docs/PROGRESS.md).
+
+### ChatGPT account sign-in
+
+Select **ChatGPT plan** in AI settings and choose **Continue with ChatGPT**. Sign in on the tab that opens, then pick a model and save sharing consent. Nothing else needs installing. The session is stored in this extension's private browser storage; **Sign out** revokes and removes it. See [how it works and where the session is stored](docs/CHATGPT_SIGNIN.md). Live eligibility depends on your ChatGPT account and OpenAI preview access. There is no automatic API billing fallback.
+
+AI Chat keeps its message box visible at the bottom while conversation history scrolls above it. Press Enter to send or Shift+Enter for a new line. Planning date, context scope and description sharing are available under Chat options.

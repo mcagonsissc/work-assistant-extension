@@ -1,3 +1,4 @@
+import { forgetBuiltInChatGPT } from '../services/ai/chatgpt-direct';
 import type { AIConfig, AIPreference, AIProposal, ChatMessage, ModelCache } from '../services/ai/types';
 import Dexie, { type EntityTable } from 'dexie';
 import { taskInput, type Task, type TaskInput, type ScheduledBlock, type FocusSession, type CalendarEvent, type DayPlan, type Reminder } from '../shared/models';
@@ -92,5 +93,6 @@ export async function saveSettings(value: WorkdaySettings, database = db) {
 }
 export async function clearData() {
   await db.transaction('rw', db.tables, async () => { for (const table of db.tables) await table.clear(); });
+  await forgetBuiltInChatGPT().catch(() => {});
   notifyBackground();
 }

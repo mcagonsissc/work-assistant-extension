@@ -1,6 +1,6 @@
 # AI providers
 
-Version 0.4 supports OpenRouter, OpenAI API and Gemini API. ChatGPT account sign-in and Microsoft/Outlook integration are not implemented; Microsoft integration has been deferred at the user's request.
+Version 0.6 supports OpenRouter, OpenAI API, Gemini API, Claude API (Anthropic API key, through the official `@anthropic-ai/sdk`) and ChatGPT plan sign-in built into the extension. Claude subscriptions cannot be used: Anthropic's terms do not allow subscription sign-in in third-party apps. See [ChatGPT setup](CHATGPT_SIGNIN.md). Microsoft integration remains deferred at the user's request.
 
 ## Configuration and migration
 
@@ -24,7 +24,7 @@ OpenAI sends `input`, requests JSON Schema through `text.format`, disables respo
 
 Gemini discovery follows bounded pagination, uses `supportedGenerationMethods` to select generation candidates, and filters clearly non-text model families. Resource names `models/{id}` normalize to simple IDs. Request URLs validate/encode model IDs; pagination tokens are encoded and never interpreted as URLs. System instructions and user/model turns map to Gemini content parts, merging adjacent turns of the same role. `generationConfig` requests `responseMimeType: application/json` plus `responseJsonSchema`. Only stopped candidates' non-thought text is parsed. Blocked, truncated, malformed and thought-only outputs cannot become proposals.
 
-All adapters use a shared HTTP transport with fixed base URLs, no cookies/referrer, refused redirects, size limits, a 30-second per-request timeout, cancellation and sanitized errors. Auth/quota/network/HTTP/embedded provider errors never echo response bodies or headers. Invalid output gets at most one corrective attempt; a 400/422 rejection of structured formatting can consume that retry in text mode with the same provider/model. Rate limits and outages do not trigger automatic paid-model/provider fallback.
+The three API-key adapters use a shared HTTP transport with fixed base URLs, no cookies/referrer, refused redirects, size limits, a 30-second per-request timeout, cancellation and sanitized errors. Auth/quota/network/HTTP/embedded provider errors never echo response bodies or headers. Invalid output gets at most one corrective attempt; a 400/422 rejection of structured formatting can consume that retry in text mode with the same provider/model. Rate limits and outages do not trigger automatic paid-model/provider fallback.
 
 ## Shared approval and privacy boundary
 
@@ -43,3 +43,5 @@ Automated tests explicitly mock authenticated catalog/completion responses. They
 For each provider, enter a real key only in the installed extension, refresh models or enter a compatible ID, enable that provider's sharing consent and save. Ask for one 30-minute task, reject the first proposal, then repeat and approve. Verify Today only changes after approval. Switch to another provider and confirm its settings/history start independently; switch back and confirm the first provider's settings/history remain. Try an invalid key and confirm a safe error without losing manual planning.
 
 Official references: [OpenAI Responses](https://developers.openai.com/api/reference/resources/responses/methods/create), [OpenAI structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [Gemini model discovery](https://aistudio.google.com/api-reference/models/list-models), [Gemini generateContent](https://aistudio.google.com/api-reference/generate-content/generate-content).
+
+ChatGPT plan uses OAuth instead of an API key: official dynamic registration, a loopback redirect captured by the extension, tokens in extension-private storage and streaming-only public Responses. It does not use the API-key model envelope. It makes one attempt per Send; unsupported/invalid output requires explicit retry. See CHATGPT_SIGNIN.md.

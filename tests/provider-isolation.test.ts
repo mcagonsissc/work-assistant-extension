@@ -1,3 +1,4 @@
+import * as chatgpt from '../src/services/ai/chatgpt';
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { beforeEach, afterEach, it, expect, vi } from 'vitest';
@@ -10,13 +11,13 @@ import type { AIProvider, ProviderId } from '../src/services/ai/provider';
 import { AI_DATE, AI_NOW, AI_KEY, answer, createAction, model } from './ai-fixtures';
 const OPENAI_KEY='sk-proj-test-only-not-a-real-openai-key';
 const GEMINI_KEY='AIza-test-only-not-a-real-google-api-key';
-const keys={openrouter:AI_KEY,openai:OPENAI_KEY,gemini:GEMINI_KEY};
+const keys={openrouter:AI_KEY,openai:OPENAI_KEY,gemini:GEMINI_KEY,claude:'sk-ant-test-only-not-a-real-claude-key'};
 const options={text:'Plan my day.',date:AI_DATE,scope:'day' as const,includeDescriptions:false};
 let db:WorkdayDB;
 function mock(response=answer()):AIProvider {return {listModels:vi.fn(async()=>[model]),complete:vi.fn(async()=>({response,attempts:1}))};}
 beforeEach(async()=>{db=new WorkdayDB(`provider-isolation-${crypto.randomUUID()}`);await saveSettings({...defaultSettings(),timeZone:'UTC'},db);vi.spyOn(Date,'now').mockReturnValue(AI_NOW);});
 afterEach(async()=>{await db.delete();vi.restoreAllMocks();});
-async function configure(id:ProviderId){await setActiveProvider(id,db);await saveAIConfig({key:keys[id],modelId:id==='gemini'?'models/gemini-test':`${id}-test`,consent:true},db);}
+async function configure(id:Exclude<ProviderId,'chatgpt'>){await setActiveProvider(id,db);await saveAIConfig({key:keys[id],modelId:id==='gemini'?'models/gemini-test':`${id}-test`,consent:true},db);}
 it('keeps independent keys, models and consent; forgetting one key preserves other providers',async()=>{
  for(const id of ['openrouter','openai','gemini'] as const)await configure(id);
  expect((await getProviderSelection(db)).providerId).toBe('gemini');expect((await getPublicAIConfig(db)).modelId).toBe('gemini-test');
@@ -62,4 +63,17 @@ it('migrates a v3 OpenRouter installation without losing credentials, cache or c
 it('redacts keys echoed in catalog names and refuses credential-shaped model IDs',async()=>{
  await configure('openai');const p=mock();vi.mocked(p.listModels).mockResolvedValueOnce([{...model,id:'gpt-test',name:OPENAI_KEY}]);await refreshModels(p,db);expect(JSON.stringify(await db.modelCache.get('openai'))).not.toContain(OPENAI_KEY);
  vi.mocked(p.listModels).mockResolvedValueOnce([{...model,id:OPENAI_KEY}]);await expect(refreshModels(p,db)).rejects.toMatchObject({code:'invalid_response'});expect((await db.modelCache.get('openai'))?.models[0].id).toBe('gpt-test');
+});
+
+it('keeps ChatGPT history scoped to the selected account and forwards no API key',async()=>{
+ const accountA=crypto.randomUUID(),accountB=crypto.randomUUID();
+ vi.spyOn(chatgpt,'chatGPTStatus').mockResolvedValue({accounts:[accountA,accountB].map(id=>({id,label:id,connected:true,planEnabled:true,welcomeAcknowledged:true})),pending:null,result:null});
+ await setActiveProvider('chatgpt',db);
+ const configureAccount=async(accountId:string)=>db.aiConfig.put({id:'chatgpt',apiKey:'',accountId,connected:true,modelId:'chatgpt-test',consent:true,revision:crypto.randomUUID()});
+ await configureAccount(accountA);await sendChat({...options,text:'ACCOUNT A PRIVATE CHAT'},mock(),db);
+ await configureAccount(accountB);const p=mock();await sendChat({...options,text:'ACCOUNT B REQUEST'},p,db);
+ const request=vi.mocked(p.complete).mock.calls[0][0];expect(request.accountId).toBe(accountB);expect(request.apiKey).toBe('');expect(JSON.stringify(request.messages)).not.toContain('ACCOUNT A PRIVATE CHAT');
+ expect((await db.chatMessages.toArray()).filter(m=>m.accountId===accountA)).toHaveLength(2);
+ const pending=mock(answer(createAction()));vi.mocked(pending.complete).mockImplementationOnce(async()=>{await configureAccount(accountA);return {response:answer(createAction()),attempts:1};});
+ await expect(sendChat(options,pending,db)).rejects.toMatchObject({code:'cancelled'});expect(await db.aiProposals.count()).toBe(0);expect(await db.tasks.count()).toBe(0);
 });

@@ -4,6 +4,8 @@ export const taskInput = z.object({
   title: z.string().trim().min(1, 'Enter a task title.').max(200),
   category: categorySchema.optional(),
   description: z.string().max(5000).default(''),
+  /** Free-form reminders about the task: things not to forget. */
+  notes: z.string().max(5000).optional(),
   priority: z.enum(['low', 'medium', 'high']),
   status: z.enum(['todo', 'in_progress', 'paused', 'completed', 'deferred']),
   estimatedMinutes: z.number().int().min(1).max(1440),

@@ -1,3 +1,4 @@
+import { ChatGPTSettings } from './ChatGPTSettings';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { RefreshCw, KeyRound, Trash2 } from 'lucide-react';
@@ -6,22 +7,26 @@ import { db } from '../../storage/db';
 import { forgetAIKey, getProviderSelection, getPublicAIConfig, refreshModels, saveAIConfig, setActiveProvider } from '../../services/ai/config';
 import { providerIds, providerLabels, type ProviderId } from '../../services/ai/provider';
 import { safeAIError } from '../../services/ai/chat';
+import { usePreferences } from '../store';
 
 export function AISettings({ report }: { report: (message: string) => void }) {
   const selection = useLiveQuery(() => getProviderSelection(), []);
   const [error, setError] = useState('');
+  const { assistantName, setAssistantName } = usePreferences();
   const id = selection?.providerId ?? 'openrouter';
   return <section className="settings-section ai-settings" aria-label="AI provider settings">
-    <h2 className="row"><KeyRound size={15}/> AI provider</h2>
+    <h2 className="row"><KeyRound size={15}/> AI assistant</h2>
+    <label className="provider-picker" htmlFor="assistant-name">Assistant name</label>
+    <input id="assistant-name" maxLength={40} value={assistantName} onChange={e => setAssistantName(e.target.value)} placeholder="Workday AI" autoComplete="off"/>
+    <p className="muted small">Shown in chat, and the assistant answers to it. Saved as you type.</p>
     <label className="provider-picker" htmlFor="ai-provider">AI provider</label>
     <select id="ai-provider" value={id} disabled={!selection} onChange={async e => {
       const next = e.target.value as ProviderId;
-      try { await setActiveProvider(next); setError(''); report(`${providerLabels[next]} selected. Keys, models, sharing consent and conversations are kept separately for each provider.`); }
+      try { await setActiveProvider(next); setError(''); report(`${providerLabels[next]} selected. Each provider keeps its own settings and conversation.`); }
       catch { setError('Unable to switch AI provider. Please retry.'); }
     }}>{providerIds.map(provider => <option key={provider} value={provider}>{providerLabels[provider]}</option>)}</select>
-    <p className="muted small">Switching providers clears unsaved fields and cancels in-flight requests. Existing OpenRouter settings and approved tasks are preserved.</p>
     {error && <p role="alert" className="error">{error}</p>}
-    {selection && <ProviderSettings key={id} id={id} report={report}/>}
+    {selection && (id === 'chatgpt' ? <ChatGPTSettings report={report}/> : <ProviderSettings key={id} id={id} report={report}/>)}
   </section>;
 }
 function ProviderSettings({ id, report }: { id: ProviderId; report: (message: string) => void }) {
@@ -57,8 +62,7 @@ function ProviderSettings({ id, report }: { id: ProviderId; report: (message: st
     : `Allow sending my chat requests and selected workday context to ${label}.`;
   return <div aria-label={`${label} settings`}>
     <h3>{label}</h3>
-    <p className="muted small">Use your own API key. It is stored locally in this extension, which is not a secure server-side secret vault. Saved keys are never shown, exported, logged or sent as chat context.</p>
-    {id === 'openai' && <p className="small muted">This uses an OpenAI API key. ChatGPT account sign-in is not implemented.</p>}
+    <p className="muted small">Uses your own API key, saved only in this extension on this device.{id === 'openai' ? ' To sign in with a ChatGPT subscription instead, choose ChatGPT plan above.' : id === 'claude' ? ' Get a key from the Anthropic Console. A Claude subscription cannot be used here.' : ''}</p>
     <form className="settings-form" onSubmit={save}>
       <label>{label} API key<input type="password" autoComplete="off" spellCheck={false} value={key} placeholder={config?.hasKey ? 'Saved key · enter a replacement' : `Enter your own ${label} key`} onChange={e => setKey(e.target.value)}/></label>
       <p className="small muted">{config?.hasKey ? 'A key is saved on this device.' : 'No API key saved.'}</p>
@@ -69,17 +73,15 @@ function ProviderSettings({ id, report }: { id: ProviderId; report: (message: st
           catch { setError('Unable to remove the saved key. Please retry.'); }
         }}><Trash2 size={13}/> Forget key</Button>}
       </div>
-      {id !== 'openrouter' && <p className="small muted">Refresh models uses the key entered above, or the saved {label} key. It sends no task data and does not save an unsaved key.</p>}
-      {cache && <p className="small muted">Catalog fetched {new Date(cache.fetchedAt).toLocaleString()}. Availability can change.</p>}
       {id === 'openrouter' && <label className="check-label"><input type="checkbox" checked={freeOnly} onChange={e => setFreeOnly(e.target.checked)}/> Show free models only</label>}
       <label>Find a model<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or ID"/></label>
       <label htmlFor="ai-model-catalog">Discovered model</label><select id="ai-model-catalog" value={models.some(m => m.id === model) ? model : ''} onChange={e => setModel(e.target.value)}><option value="">Choose a model…</option>{models.map(m => <option key={m.id} value={m.id}>{m.name}{id === 'openrouter' ? m.free ? ' · Free' : ' · Paid' : ''}</option>)}</select>
       <label>Model ID<input required maxLength={200} value={model} onChange={e => setModel(e.target.value)} placeholder="Select above or enter a model ID" spellCheck={false}/></label>
-      {id === 'openrouter' ? selected ? <p className="small muted">{selected.free ? 'Listed as free; account limits and availability still apply.' : `Paid model · prompt ${selected.promptPrice} / completion ${selected.completionPrice} USD per token in cached catalog.`} {selected.structured ? 'Structured output advertised.' : 'Uses schema-guided text with validation.'}</p> : model && <p className="small muted">Model not in the cached catalog. Manual IDs use schema-guided text; availability is checked on Send.</p>
-        : <p className="small muted">The catalog does not report pricing or free-tier eligibility. Check your provider account; requests may be billed. Model compatibility is checked on Send. JSON output is requested first, with one text fallback if the provider rejects that format.</p>}
+      {id === 'openrouter' ? selected && <p className="small muted">{selected.free ? 'Free model; account limits still apply.' : `Paid model · prompt ${selected.promptPrice} / completion ${selected.completionPrice} USD per token.`}</p>
+        : <p className="small muted">Requests may be billed by {label}. Check pricing in your provider account.</p>}
       <label className="check-label"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}/>{consentLabel}</label>
-      <p className="small muted">Send shares task summaries, work constraints, busy time windows and recent conversation from this provider only. Descriptions are optional in Chat. Webpages, meeting titles, saved keys and notification preferences are excluded. Invalid output may trigger one corrective request, which can incur charges. No automatic provider or paid-model fallback.</p>
       {error && <p role="alert" className="error">{error}</p>}<Button disabled={busy || !config}>Save AI settings</Button>
+      <details className="more"><summary>What gets shared?</summary><p className="small muted">Each request sends task summaries, work hours, busy time windows and your recent conversation with this provider. Task descriptions are sent only if you turn that on in Chat. Webpages, meeting titles and saved keys are never sent. An invalid answer may trigger one automatic retry, which can cost extra. There is no automatic switch to another provider or a paid model.</p></details>
     </form>
   </div>;
 }

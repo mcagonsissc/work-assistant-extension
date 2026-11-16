@@ -11,7 +11,7 @@ test('built extension starts its worker, restores alarms and retains focus after
   const id=new URL(worker.url()).host;
   await expect.poll(()=>worker.evaluate(async()=>!!(await chrome.alarms.get('workday-maintenance')))).toBe(true);
   expect(await worker.evaluate(async()=>await chrome.permissions.contains({permissions:['sidePanel','alarms','notifications']}))).toBe(true);
-  const page=await context.newPage();await page.goto(`chrome-extension://${id}/index.html`);
+  const page=await context.newPage();await page.goto(`chrome-extension://${id}/index.html`);await page.getByRole('button',{name:'Today',exact:true}).click();
   await page.getByRole('button',{name:'Add task',exact:true}).click();await page.getByLabel('Task title').fill('Real extension focus');await page.getByRole('button',{name:'Save task',exact:true}).click();
   await page.getByRole('button',{name:'Start focus: Real extension focus',exact:true}).click();
   await expect.poll(()=>worker.evaluate(async()=>(await chrome.alarms.getAll()).filter(a=>a.name.startsWith('wd:focus:')).length)).toBeGreaterThan(0);
@@ -45,7 +45,7 @@ test('packaged side panel can reach only the configured AI host and applies vali
    if(route.request().url().endsWith('/models'))await route.fulfill({json:{data:[{id:'test/extension',name:'Extension test model',pricing:{prompt:'0',completion:'0'},supported_parameters:[]}]}});
    else{const body=route.request().postDataJSON();expect(body.response_format).toBeUndefined();expect(JSON.stringify(body.messages)).not.toContain(key);await route.fulfill({json:{choices:[{message:{content:JSON.stringify({reply:'Review this proposed task before applying it.',actions:[{type:'create_task',clientId:'review',title:'Packaged AI task',description:'',category:'review',priority:'high',estimatedMinutes:30,scheduledDate:null,deadline:null,dependencyIds:[]}]})},finish_reason:'stop'}]}});}
   });
-  const page=await context.newPage();await page.goto(`chrome-extension://${id}/index.html`);
+  const page=await context.newPage();await page.goto(`chrome-extension://${id}/index.html`);await page.getByRole('button',{name:'Today',exact:true}).click();
   await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByLabel('OpenRouter API key',{exact:true}).fill(key);await page.getByRole('button',{name:'Refresh models',exact:true}).click();await page.getByRole('combobox',{name:'Discovered model',exact:true}).selectOption('test/extension');await page.getByLabel('Allow sending my chat requests and selected workday context to OpenRouter and the selected model provider.').check();await page.getByRole('button',{name:'Save AI settings',exact:true}).click();await expect(page.getByLabel('OpenRouter API key',{exact:true})).toHaveValue('');
   await page.getByRole('button',{name:'AI Chat',exact:true}).click();await page.getByLabel('Message to AI',{exact:true}).fill('Add a task to review the API.');await page.getByRole('button',{name:'Send',exact:true}).click();await page.getByRole('button',{name:'Approve changes',exact:true}).click();await expect(page.getByRole('heading',{name:'Changes approved',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Back to Today',exact:true}).click();await expect(page.getByRole('heading',{name:'Packaged AI task',exact:true})).toBeVisible();expect(await page.locator('body').innerText()).not.toContain(key);

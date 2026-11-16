@@ -7,7 +7,7 @@ import { assistantResponseSchema, AIError, redactSecrets, type AssistantResponse
 import type { AIProposal, Change } from './types';
 import type { WorkdaySnapshot } from './context';
 function invalid(message: string): never { throw new AIError('invalid_action', `${message} No task changes were applied.`); }
-function taskSummary(task: Task): Record<string,unknown> { return { title:task.title, description:task.description, category:task.category ?? 'other', priority:task.priority, status:task.status, estimatedMinutes:task.estimatedMinutes, scheduledDate:task.scheduledDate ?? null, deadline:task.deadline ?? null, dependencyIds:task.dependencyIds }; }
+function taskSummary(task: Task): Record<string,unknown> { return { title:task.title, description:task.description, category:task.category ?? 'other', priority:task.priority, status:task.status, estimatedMinutes:task.estimatedMinutes, scheduledDate:task.scheduledDate ?? null, deadline:task.deadline ?? null, dependencyIds:task.dependencyIds, notes:task.notes ?? '' }; }
 export function projectActions(base: WorkdaySnapshot, response: AssistantResponse, date: string, allowedTaskIds: string[], ids: [string,string][], now: number) {
   const state = structuredClone(base), createdIds = new Map(ids), allowed = new Set(allowedTaskIds);
   const dates = new Set<string>(), changes: Change[] = [];
@@ -39,6 +39,8 @@ export function projectActions(base: WorkdaySnapshot, response: AssistantRespons
       dates.add(date);continue;
     }
     const id=resolve(action.taskId), task=state.tasks.find(t=>t.id===id); if (!task) invalid('The referenced task no longer exists.');
+    // A note never conflicts with other changes to the same task and never moves the schedule.
+    if (action.type==='add_note') { task.notes=[task.notes,action.note].filter(Boolean).join('\n'); task.updatedAt=iso(now); mutated.add(id); continue; }
     if (mutated.has(id)) invalid('The model proposed conflicting actions for the same task.'); mutated.add(id);
     dates.add(task.scheduledDate ?? date);
     if (action.type==='update_task') {

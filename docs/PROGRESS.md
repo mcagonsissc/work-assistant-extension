@@ -100,3 +100,40 @@ Limits / remaining acceptance:
 - Existing harmless Zod annotation warnings and Vite's side-panel size advisory (~728 kB before gzip) remain; code splitting/performance review belongs to stabilization. No new dependency or backend was added.
 
 Next: live local-key checks for both providers and Edge daily-use verification, then accessibility, performance and release packaging. Microsoft integration remains deferred.
+
+## v0.5 — ChatGPT plan sign-in
+
+- Added a separate ChatGPT plan provider, Continue with ChatGPT, saved account selection, explicit plan consent, account-scoped history, dynamic model discovery, first-use notice and Manage usage. API-key providers remain independent.
+- Added an on-demand native messaging helper using official dynamic client registration, stable host identity, loopback PKCE/state/nonce and JOSE identity verification. OAuth credentials remain in protected atomic local files, with serialized refresh rotation and sign-out/revocation; issued client mappings survive sign-out.
+- Public streaming Responses requests use store:false, stream:true and completed-only output. Interrupted/failed streams and invalid task actions cannot produce proposals. Existing transactional task approval remains required. No private ChatGPT endpoints, imported Codex credentials or billing fallback.
+- Prepared one-time Edge/Chrome/Chromium installer and target-OS setup/uninstall guidance in CHATGPT_SIGNIN.md. Linux installer preview generated in /tmp; no host installed into the user's actual browser profile.
+- Production build and TypeScript pass. 131 unit/integration tests, 11 browser workflows and 4 packaged-extension checks pass; ChatGPT browser OAuth/inference is mocked. Real native framing and loopback callback checks run as subprocess/network integration tests. Existing Zod comment and bundle-size build advisories remain.
+- Real ChatGPT sign-in/plan eligibility and target Edge native registration require the user's local smoke test. Windows/macOS installation paths are implemented but not run on those operating systems here.
+
+## WSL ChatGPT companion transport
+
+- Added a loopback HTTP companion and explicit Native helper / WSL companion selector with saved pairing. No Windows Node.js or native-host registration required for this mode. No managed policy settings were changed.
+- Shared strict protocol dispatcher; pairing/host/origin/extension checks; bounded requests, response sizes and timeouts; cancellation propagates on client disconnect. OAuth tokens remain in protected WSL files. Windows browser launch uses encoded PowerShell arguments through WSL interoperability.
+- Browser pairing credential is excluded from exports and redacted from context. Deleting browser data clears pairing while leaving companion OAuth sign-out explicit.
+- Verified real Windows-to-WSL localhost reachability (HTTP 200), 136 unit/integration tests, 11 browser workflows and 5 packaged-extension checks. The new packaged check uses the real HTTP companion with mocked ChatGPT identity/inference and exercises incorrect pairing plus successful task approval. Live OAuth eligibility remains unverified.
+
+## Compact chat layout and keyboard sending
+
+- AI Chat uses a viewport-height flex layout with an independently scrolling conversation and an always-visible bottom composer. Branding/header are compact, provider/account details are reduced, and context controls live in a closed-by-default Chat options popup. Global settings notices are cleared when navigating to Chat.
+- Enter submits a valid message; Shift+Enter inserts a newline. IME composition, empty messages, busy requests, missing configuration and offline mode cannot trigger keyboard sends. Conversation follows new messages when near the bottom without jumping away from older messages being read.
+- Production build and TypeScript pass. Twelve browser workflows pass, including a new multi-message test at 360×600 and 320×420 that checks composer visibility, no page overflow, multiline input and IME handling.
+
+## Version 0.6: built-in ChatGPT sign-in, simpler interface
+
+- ChatGPT plan sign-in now runs entirely inside the extension. The native messaging helper, WSL companion, installer script and pairing code were removed, along with the `nativeMessaging` permission. New permissions: `storage`, `https://auth.openai.com/*`, `http://127.0.0.1/*`.
+- Tokens are stored in `chrome.storage.local`. This departs from OpenAI's guidance to keep tokens out of browser storage; see CHATGPT_SIGNIN.md.
+- Models load automatically after sign-in. Failed ChatGPT streams now show OpenAI's own error code and message.
+- Interface restyled: larger type, card-based settings, shorter copy, simpler header, sharing details moved behind "What gets shared?".
+- The assistant's instructions now require it to ask for missing details (meeting times, which task, target date) before proposing changes, and to say plainly that it cannot delete tasks or edit existing meetings.
+- 125 unit tests, 12 browser workflows and 5 packaged-extension checks pass. OpenAI is mocked in all of them.
+- Added Claude as an API-key provider (`src/services/ai/claude.ts`, official Anthropic SDK, structured outputs with a text fallback, no automatic retries or model fallback). New host permission: `https://api.anthropic.com/*`.
+- ChatGPT: one account at a time. Signing out removes the account, its saved details and its conversation from the extension. Saved API keys for other providers are kept; only the selected provider is used.
+- Tasks have a Notes field (task form and task list). The assistant can append notes with a new `add_note` action, shown for approval like any other change. Notes are sent to the AI only when "Include task descriptions and notes" is on.
+- Assistant instructions: it now holds a productivity-focused conversation and proposes changes only when explicitly asked; remarks and small talk never create tasks.
+- System notifications are on by default for new installs, check-ins stay on screen until dismissed, and Settings has a "Send a test notification" button.
+- AI Chat is the first tab and opens by default; the message box clears as soon as you send. Settings has an Assistant name field, shown in chat and passed to the model.
