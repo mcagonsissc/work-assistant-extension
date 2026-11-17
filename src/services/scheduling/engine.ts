@@ -6,6 +6,30 @@ export interface ScheduleResult { date: string; timeZone: string; start: string;
 export function spentSeconds(task: Task, sessions: FocusSession[], now: number) {
   return task.actualSeconds + sessions.filter(s => s.taskId === task.id && !s.endedAt).reduce((sum, s) => sum + Math.max(0, (now - Date.parse(s.startedAt)) / 1000), 0);
 }
+/** True when the task had a focus session at some point during [start, end). */
+export function workedDuring(taskId: string | undefined, start: number, end: number, sessions: FocusSession[], now: number) {
+  return !!taskId && sessions.some(s => s.taskId === taskId && Date.parse(s.startedAt) < end && Date.parse(s.endedAt ?? iso(now)) > start);
+}
+/** Past planned time is history only when it was used: the task was worked on then, or finished. */
+function keepPast(task: Task, start: number, end: number, sessions: FocusSession[], now: number) {
+  return end - start >= MINUTE && (task.status === 'completed' || workedDuring(task.id, start, end, sessions, now));
+}
+/**
+ * The blocks the Today timeline shows for a saved plan. Hides past slots of tasks that were
+ * not worked on and have since been deferred or moved to another day, and sub-minute pieces
+ * left by earlier replanning, so a plan saved before a change reads like the current one.
+ */
+export function timelineBlocks(blocks: ScheduledBlock[], tasks: Task[], sessions: FocusSession[], date: string, now: number) {
+  return blocks.filter(block => {
+    if (block.kind !== 'task') return true;
+    const task = tasks.find(t => t.id === block.taskId);
+    if (!task) return false;
+    const start = Date.parse(block.start), end = Date.parse(block.end);
+    if (end <= now && !keepPast(task, start, end, sessions, now)) return false;
+    const offPlan = task.status === 'deferred' || (!!task.scheduledDate && task.scheduledDate !== date);
+    return !offPlan || workedDuring(task.id, start, end, sessions, now);
+  });
+}
 export function scheduleDay(input: ScheduleInput): ScheduleResult {
   const { date, tasks, events, existing, sessions, now } = input;
   const settings = settingsSchema.parse(input.settings);
@@ -35,6 +59,8 @@ export function scheduleDay(input: ScheduleInput): ScheduleResult {
     if (task.status === 'completed') end = Math.min(end, Date.parse(task.completedAt ?? iso(now)), now);
     else if (!block.fixed) end = Math.min(end, now);
     if ((start < now || block.fixed) && end > start) {
+      // Planned time that has passed without being used is dropped, not kept as fragments.
+      if ((!block.fixed || end <= now) && !keepPast(task, start, Math.min(end, now), sessions, now)) continue;
       const kept = { ...block, end: iso(end), planDate: date };
       if (block.planDate === date) blocks.push(kept);
       else add(kept);

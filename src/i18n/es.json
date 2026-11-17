@@ -451,5 +451,19 @@
  "Unable to save check-in.": "No se pudo guardar el seguimiento.",
  "Unable to approve plan.": "No se pudo aprobar el plan.",
  "Unable to save settings.": "No se pudieron guardar los ajustes.",
- "Short break": "Descanso corto"
+ "Short break": "Descanso corto",
+ "Schedule task": "Programar tarea",
+ "Clear set time": "Quitar la hora fijada",
+ " · set time": " · hora fijada",
+ "The model proposed conflicting times for the same task.": "El modelo propuso horas contradictorias para la misma tarea.",
+ "Reopen the task before giving it a time.": "Reabre la tarea antes de asignarle una hora.",
+ "This task does not have a set time.": "Esta tarea no tiene una hora fijada.",
+ "That time is invalid or ambiguous in your workday timezone.": "Esa hora no es válida o es ambigua en la zona horaria de tu jornada.",
+ "That time has already passed.": "Esa hora ya ha pasado.",
+ "This task has no time left in its estimate. Add time to it first.": "A esta tarea no le queda tiempo en su estimación. Añádele tiempo primero.",
+ "The end time must be after the start time.": "La hora de fin debe ser posterior a la de inicio.",
+ "That time is outside your working hours.": "Esa hora está fuera de tu horario de trabajo.",
+ "That time overlaps a meeting.": "Esa hora coincide con una reunión.",
+ "Two tasks were given overlapping times.": "Se asignaron horas superpuestas a dos tareas.",
+ "The model proposed conflicting actions for the same task.": "El modelo propuso acciones contradictorias para la misma tarea."
 }

@@ -8,6 +8,7 @@ import type { CalendarEvent, Reminder, ScheduledBlock } from '../../shared/model
 import { defaultSettings, type WorkdaySettings } from '../../shared/settings';
 import { approvePlan, deleteMeeting, planFingerprint, previewPlan, saveMeeting, taskName, type PlanProposal } from '../../services/scheduling/service';
 import { addDays, dateInZone, formatTime, iso, localInput, parseLocalInput, workDate, workWindow } from '../../services/scheduling/time';
+import { timelineBlocks } from '../../services/scheduling/engine';
 import { buildReminders, dismissCheckIn } from '../../services/notifications/reminders';
 import { pauseFocus } from '../../services/focus/service';
 export function MeetingForm({ date, settings, event, close, saved }: { date: string; settings: WorkdaySettings; event?: CalendarEvent; close: () => void; saved: () => Promise<void> }) {
@@ -44,7 +45,7 @@ export function Planner({ report, now, extensionRequest, consumeExtension }: { c
   const window = workWindow(date,settings);
   const events = state.events.filter(e => dateInZone(Date.parse(e.start),settings.timeZone) === date || (e.end > iso(window.start) && e.start < iso(window.end))).sort((a,b) => a.start.localeCompare(b.start));
   const savedBlocks = state.existing.filter(b => b.planDate === date).sort((a,b) => Date.parse(a.start) - Date.parse(b.start) || a.id.localeCompare(b.id));
-  const blocks = proposal?.result.blocks ?? savedBlocks;
+  const blocks = timelineBlocks(proposal?.result.blocks ?? savedBlocks, state.tasks, state.sessions, date, now);
   const overflow = proposal?.result.overflow ?? plan?.overflow ?? [];
   const warnings = proposal?.result.warnings ?? plan?.warnings ?? [];
   const next = state.events.filter(e => e.busy && Date.parse(e.end) > now).sort((a,b) => a.start.localeCompare(b.start))[0];
@@ -85,5 +86,5 @@ export function Planner({ report, now, extensionRequest, consumeExtension }: { c
 }
 function TimelineEntry({ block, zone, title, status, now }: { block: ScheduledBlock; zone: string; title: string; status?: string; now: number }) {
   const current = now >= Date.parse(block.start) && now < Date.parse(block.end);
-  return <li className={`timeline-entry ${block.kind} ${current ? 'current' : ''}`}><div className="timeline-time">{formatTime(block.start,zone)}<span>{formatTime(block.end,zone)}</span></div><div><strong>{title}</strong><p>{Math.round((Date.parse(block.end) - Date.parse(block.start))/60000)}{' '}{t('min')} · {t(block.kind)}{status ? ` · ${t(status.replace('_',' '))}` : ''}{current ? t(' · now') : ''}</p></div></li>;
+  return <li className={`timeline-entry ${block.kind} ${current ? 'current' : ''}`}><div className="timeline-time">{formatTime(block.start,zone)}<span>{formatTime(block.end,zone)}</span></div><div><strong>{title}</strong><p>{Math.round((Date.parse(block.end) - Date.parse(block.start))/60000)}{' '}{t('min')} · {t(block.kind)}{status ? ` · ${t(status.replace('_',' '))}` : ''}{block.fixed && block.kind === 'task' ? t(' · set time') : ''}{current ? t(' · now') : ''}</p></div></li>;
 }

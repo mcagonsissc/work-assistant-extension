@@ -451,5 +451,19 @@
  "Unable to save check-in.": "Der Check-in konnte nicht gespeichert werden.",
  "Unable to approve plan.": "Der Plan konnte nicht bestätigt werden.",
  "Unable to save settings.": "Die Einstellungen konnten nicht gespeichert werden.",
- "Short break": "Kurze Pause"
+ "Short break": "Kurze Pause",
+ "Schedule task": "Aufgabe einplanen",
+ "Clear set time": "Feste Uhrzeit entfernen",
+ " · set time": " · feste Uhrzeit",
+ "The model proposed conflicting times for the same task.": "Das Modell hat widersprüchliche Zeiten für dieselbe Aufgabe vorgeschlagen.",
+ "Reopen the task before giving it a time.": "Öffnen Sie die Aufgabe wieder, bevor Sie ihr eine Uhrzeit geben.",
+ "This task does not have a set time.": "Diese Aufgabe hat keine feste Uhrzeit.",
+ "That time is invalid or ambiguous in your workday timezone.": "Diese Uhrzeit ist in der Zeitzone Ihres Arbeitstags ungültig oder mehrdeutig.",
+ "That time has already passed.": "Diese Uhrzeit liegt bereits in der Vergangenheit.",
+ "This task has no time left in its estimate. Add time to it first.": "Die Schätzung dieser Aufgabe ist aufgebraucht. Fügen Sie zuerst Zeit hinzu.",
+ "The end time must be after the start time.": "Die Endzeit muss nach der Startzeit liegen.",
+ "That time is outside your working hours.": "Diese Uhrzeit liegt außerhalb Ihrer Arbeitszeit.",
+ "That time overlaps a meeting.": "Diese Uhrzeit überschneidet sich mit einer Besprechung.",
+ "Two tasks were given overlapping times.": "Zwei Aufgaben wurden überlappende Zeiten zugewiesen.",
+ "The model proposed conflicting actions for the same task.": "Das Modell hat widersprüchliche Aktionen für dieselbe Aufgabe vorgeschlagen."
 }

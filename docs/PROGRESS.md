@@ -141,3 +141,9 @@ Next: live local-key checks for both providers and Edge daily-use verification, 
 - AI answers from weaker models are repaired where safe (prose around the JSON, missing optional fields, extra keys, date formats) and the single retry now tells the model exactly what was wrong. ChatGPT plan-limit errors show a clear message.
 - The assistant can change and delete meetings (`update_meeting`, `delete_meeting`), with approval. Meeting titles are now sent to the AI by default so it can find a meeting by name; a Chat option turns that off.
 - The interface is available in English, French, Spanish, German and Portuguese (Settings → Language; defaults to the browser language). Translations live in `src/i18n/<language>.json`, keyed by the English text; `tests/i18n.test.ts` checks every string has a translation. The assistant replies in the chosen language, reminders are translated, and the store description is localized through `_locales`.
+- The assistant can now change when tasks happen: `schedule_task` gives a task a set time (move, switch two tasks, do one first) and the rest of the day is replanned around it; startLocal null clears it. Cancelling a task from the day uses `defer_task`. Set times show as "set time" on the Today timeline. Previously the assistant had no way to move a task, so these requests left the plan unchanged.
+
+## Version 0.6.1
+
+- Fix: asking the assistant to move, switch or cancel tasks now changes the Today schedule (see `schedule_task` above). Settings shows the version from the manifest.
+- Fix: replanning no longer keeps past planned slots that were never used, so deferred tasks and 0–1 minute fragments disappear from the Today timeline; saved plans are shown the same way before they are replanned.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { scheduleDay, type ScheduleInput } from '../src/services/scheduling/engine';
+import { scheduleDay, timelineBlocks, type ScheduleInput } from '../src/services/scheduling/engine';
 import { defaultSettings } from '../src/shared/settings';
 import { addDays, parseLocalInput, workDate, workWindow, zonedTime } from '../src/services/scheduling/time';
 import type { CalendarEvent, ScheduledBlock, Task } from '../src/shared/models';
@@ -62,6 +62,27 @@ describe('deterministic workday scheduling', () => {
     const result = plan({ now:ms('10:00'), tasks:[task('done',180,{status:'completed',completedAt:instant('09:45')}),task('next',60)], existing:[{id:'old',taskId:'done',kind:'task',start:instant('09:00'),end:instant('12:00'),fixed:false}] });
     expect(result.blocks.find(b => b.id === 'old')?.end).toBe(instant('09:45'));
     expect(result.blocks.find(b => b.taskId === 'next')?.start).toBe(instant('10:00'));
+  });
+  it('drops past planned time nobody used, including leftover fragments', () => {
+    const old = (id: string, taskId: string, start: string, end: string): ScheduledBlock => ({ id, taskId, kind: 'task', start: instant(start), end: instant(end), fixed: false, planDate: date });
+    const result = plan({ now: ms('10:00'),
+      tasks: [task('skipped', 60, { status: 'deferred' }), task('worked', 60, { actualSeconds: 600, status: 'paused' }), task('idle', 60)],
+      sessions: [{ id: 's', taskId: 'worked', startedAt: instant('09:30'), endedAt: instant('09:40') }],
+      existing: [old('a', 'skipped', '09:00', '09:30'), old('b', 'worked', '09:30', '09:50'), old('c', 'idle', '09:50', '09:55'), old('d', 'idle', '09:59', '09:59')] });
+    expect(result.blocks.map(b => b.id).filter(id => ['a', 'b', 'c', 'd'].includes(id))).toEqual(['b']);
+    expect(result.blocks.filter(b => b.taskId === 'idle').map(b => b.start)).toEqual([instant('10:00')]);
+  });
+  it('shows the current plan on the timeline even before it is replanned', () => {
+    const saved: ScheduledBlock[] = [
+      { id: 'past-deferred', taskId: 'litellm', kind: 'task', start: instant('10:01'), end: instant('10:04'), fixed: false, planDate: date },
+      { id: 'stub', taskId: 'deploy', kind: 'task', start: instant('10:06'), end: instant('10:06'), fixed: false, planDate: date },
+      { id: 'later-deferred', taskId: 'litellm', kind: 'task', start: instant('14:00'), end: instant('15:00'), fixed: false, planDate: date },
+      { id: 'worked', taskId: 'form', kind: 'task', start: instant('09:00'), end: instant('09:30'), fixed: false, planDate: date },
+      { id: 'next', taskId: 'deploy', kind: 'task', start: instant('11:00'), end: instant('11:30'), fixed: false, planDate: date },
+      { id: 'meeting', calendarEventId: 'm', kind: 'meeting', start: instant('10:30'), end: instant('11:00'), fixed: true, planDate: date }];
+    const tasks = [task('litellm', 60, { status: 'deferred' }), task('deploy', 60), task('form', 30, { status: 'paused', actualSeconds: 900 })];
+    const sessions = [{ id: 's', taskId: 'form', startedAt: instant('09:00'), endedAt: instant('09:15') }];
+    expect(timelineBlocks(saved, tasks, sessions, date, ms('10:10')).map(b => b.id)).toEqual(['worked', 'next', 'meeting']);
   });
   it('preserves future fixed task commitments and does not allocate that work twice', () => {
     const result = plan({ tasks:[task('a',120)], existing:[{id:'fixed',taskId:'a',kind:'task',start:instant('14:00'),end:instant('15:00'),fixed:true}] });

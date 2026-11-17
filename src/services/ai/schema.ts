@@ -19,6 +19,8 @@ export const actionSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('create_meeting'), title: z.string().trim().min(1).max(200), startLocal: localDateTime, endLocal: localDateTime }),
   z.strictObject({ type: z.literal('update_meeting'), meetingId: reference, title: z.string().trim().min(1).max(200).nullable(), startLocal: localDateTime.nullable(), endLocal: localDateTime.nullable() }),
   z.strictObject({ type: z.literal('delete_meeting'), meetingId: reference }),
+  // A set time for a task. startLocal null clears it so the planner chooses again.
+  z.strictObject({ type: z.literal('schedule_task'), taskId: reference, startLocal: localDateTime.nullable(), endLocal: localDateTime.nullable() }),
   z.strictObject({ type: z.literal('add_note'), taskId: reference, note: z.string().trim().min(1).max(1000) }),
   z.strictObject({ type: z.literal('reschedule'), date: z.iso.date() }),
 ]);
@@ -72,6 +74,7 @@ function repairAction(value: unknown, index: number): unknown {
     case 'defer_task': return { type, taskId, scheduledDate: date(a.scheduledDate ?? a.date) };
     case 'extend_task': return { type, taskId, minutes: a.minutes ?? a.extraMinutes };
     case 'add_note': return { type, taskId, note: a.note ?? a.text };
+    case 'schedule_task': case 'move_task': case 'pin_task': return { type: 'schedule_task', taskId, startLocal: localTime(a.startLocal ?? a.start ?? a.startTime) ?? null, endLocal: localTime(a.endLocal ?? a.end ?? a.endTime) ?? null };
     case 'reschedule': return { type, date: date(a.date ?? a.scheduledDate) };
     case 'create_meeting': {
       const startLocal = localTime(a.startLocal ?? a.start ?? a.startTime); let endLocal = localTime(a.endLocal ?? a.end ?? a.endTime);
